@@ -11,19 +11,11 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-
-import os
 from dotenv import load_dotenv
-
-# Находим и загружаем файл .env
 load_dotenv()
 
 # Извлекаем токен
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-# Проверка, что токен успешно прочитан
-if not BOT_TOKEN:
-    raise ValueError("Ошибка: Токен не найден в файле .env!")
 
 # Настройка логирования
 logging.basicConfig(
@@ -45,10 +37,13 @@ def load_data() -> None:
         try:
             with open("user.json", "r", encoding="utf-8") as f:
                 user_data = json.load(f)
-            logging.info("Данные загружены из user.json")
+            logging.info("Данные успешно загружены из user.json")
         except Exception as e:
-            logging.error(f"Ошибка загрузки: {e}")
+            logging.error(f"Ошибка загрузки user.json: {e}")
             user_data = {}
+    else:
+        user_data = {}
+        save_data()
 
 
 def save_data() -> None:
@@ -87,7 +82,6 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     name = update.message.text
     context.user_data["name"] = name
 
-    # 3 Inline-кнопки для выбора цвета
     keyboard = [
         [
             InlineKeyboardButton("🔴 Красный", callback_data="color_Красный"),
@@ -112,7 +106,6 @@ async def get_color_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     chosen_color = query.data.split("_")[1]
     context.user_data["color"] = chosen_color
 
-    # 3 Inline-кнопки для выбора машины
     keyboard = [
         [
             InlineKeyboardButton("🚗 BMW", callback_data="car_BMW"),
@@ -140,17 +133,14 @@ async def get_car_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     name = context.user_data.get("name")
     color = context.user_data.get("color")
 
-    # Сохраняем все 3 параметра в глобальный словарь
     user_data[user_id] = {
         "name": name,
         "color": color,
         "car": chosen_car,
     }
 
-    # Сохраняем в user.json
     save_data()
 
-    # Кнопка для быстрого вызова профиля
     keyboard = [[InlineKeyboardButton("📱 Посмотреть профиль", callback_data="show_profile")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -180,7 +170,6 @@ async def show_profile_callback(update: Update, context: ContextTypes.DEFAULT_TY
     user_id = str(update.effective_user.id)
     text = get_profile_text(user_id)
 
-    # Редактируем сообщение или отправляем текст профиля
     await query.edit_message_text(text=text)
 
 
@@ -191,17 +180,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 def main():
-    # Загружаем сохраненный user.json
     load_data()
-
-
-# ================= TOKEN =================
-
-    BOT_TOKEN = os.environ.get ('BOT_TOKEN')
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Диалог опроса
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -213,8 +195,6 @@ def main():
     )
 
     app.add_handler(conv_handler)
-    
-    # Команда /profile и обработчик Inline-кнопки профиля
     app.add_handler(CommandHandler("profile", profile_command))
     app.add_handler(CallbackQueryHandler(show_profile_callback, pattern="^show_profile$"))
 
